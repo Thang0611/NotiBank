@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        boolean isEnabled = prefs.getBoolean("listener_enabled", true);
+        boolean isEnabled = prefs.getBoolean("listener_enabled", false);
         switchListener.setChecked(isEnabled);
 
         // Kiểm tra nếu đây là lần đầu tiên mở ứng dụng
@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         switchListener.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
             SharedPreferences.Editor editor = prefs.edit();
             editor.putBoolean("listener_enabled", isChecked);
+
             editor.apply();
         });
 

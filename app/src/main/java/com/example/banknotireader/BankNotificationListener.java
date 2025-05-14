@@ -2,6 +2,7 @@ package com.example.banknotireader;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
@@ -21,7 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BankNotificationListener extends NotificationListenerService {
-
+    private static AudioManager audioManager;
     private TextToSpeech tts;
     private DBHelper dbHelper;
     private SharedPreferences prefs;
@@ -29,11 +30,12 @@ public class BankNotificationListener extends NotificationListenerService {
     @Override
     public void onCreate() {
         super.onCreate();
+
         dbHelper = new DBHelper(this);
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(new Locale("vi"));
+                tts.setLanguage(new Locale("vi","VN"));
             }
         });
     }
