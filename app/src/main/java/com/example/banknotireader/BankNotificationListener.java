@@ -3,14 +3,19 @@ package com.example.banknotireader;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
 
+import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.text.Normalizer;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,11 +24,13 @@ public class BankNotificationListener extends NotificationListenerService {
 
     private TextToSpeech tts;
     private DBHelper dbHelper;
+    private SharedPreferences prefs;
 
     @Override
     public void onCreate() {
         super.onCreate();
         dbHelper = new DBHelper(this);
+        prefs = getSharedPreferences("settings", MODE_PRIVATE);
         tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status == TextToSpeech.SUCCESS) {
                 tts.setLanguage(new Locale("vi"));
@@ -33,70 +40,164 @@ public class BankNotificationListener extends NotificationListenerService {
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
-        // Kiểm tra trạng thái bật/tắt của listener
-        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
         if (!prefs.getBoolean("listener_enabled", true)) return;
 
-        // Lấy nội dung thông báo và tiêu đề
-        Bundle extras = sbn.getNotification().extras;
-        String title = extras.getCharSequence("android.title") + "";
-        String text = extras.getCharSequence("android.text") + "";
+        try {
+            Bundle extras = sbn.getNotification().extras;
+            String title = String.valueOf(extras.getCharSequence(NotificationCompat.EXTRA_TITLE));
+            String text = String.valueOf(extras.getCharSequence(NotificationCompat.EXTRA_TEXT));
+            String packageName = sbn.getPackageName();
+            Log.i("NHT", "onNotificationPosted: "+packageName);
+            if (packageName.equals("com.zing.zalo") || packageName.equals("com.facebook.orca")) return;
 
-        // Kiểm tra xem tiêu đề có chứa các từ khóa liên quan đến giao dịch ngân hàng
-        Log.i("NHT", "onNotificationPosted: "+text);
-        if (!containsBankKeywords(title, text)) {
-            return; // Nếu không có từ khóa liên quan, bỏ qua
-        }
+            boolean isMoney = isMoneyText(text) || isMoneyText(title);
+            Log.i("NHT", "onNotificationPosted: "+(title));
+            Log.i("NHT", "onNotificationPosted: "+(text));
+            Log.i("NHT", "onNotificationPosted: "+isMoneyText(text) + isMoneyText(title));
+            boolean isBankPackage = isBankNotification(packageName);
 
-        // Kiểm tra xem thông báo có chứa số tiền hay không
-        String amount = extractAmount(text);
-        if (amount != null) {
-            speak("Bạn vừa nhận được " + amount);
-            dbHelper.insertTransaction(amount, text, System.currentTimeMillis());
-            // Gửi broadcast để cập nhật giao diện
-            Intent intent = new Intent("com.example.banknotireader.NEW_TRANSACTION");
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            if (isMoney||isBankPackage ) {
+
+
+                Handler handler = new Handler();
+                handler.postDelayed(() -> {
+                    String content = parseTransaction(packageName, title, text);
+                    Log.i("NHT", "onNotificationPosted: "+content);
+                    if (!content.isEmpty()) {
+                        speak(content);
+                        saveTransaction(title, text);
+                        Log.i("NHT", "onNotificationPosted: "+content);
+                    }
+                }, 1000);
+            }
+
+        } catch (Exception e) {
+            Log.e("BankNotification", "Lỗi xử lý thông báo: ", e);
         }
     }
 
-    // Kiểm tra tiêu đề và nội dung thông báo có chứa từ khóa ngân hàng
-    private boolean containsBankKeywords(String title, String text) {
-        // Các từ khóa liên quan đến giao dịch ngân hàng
-        String[] bankKeywords = {
-                "Giao dịch", "Số dư", "Thanh toán", "Chuyển khoản", "Chuyển tiền", "Thanh toán", "VND", "₫", "đ"
-        };
-        String _title = removeVietnameseTone(title);
-        String _text = removeVietnameseTone(text);
-        // Kiểm tra nếu tiêu đề hoặc nội dung chứa bất kỳ từ khóa nào trong danh sách
-        for (String keyword : bankKeywords) {
-            if (title.contains(keyword) || text.contains(keyword)||title.contains(removeVietnameseTone(keyword)) || text.contains(removeVietnameseTone(keyword))) {
-                return true; // Nếu có từ khóa, xác nhận là thông báo ngân hàng
+    private boolean isMoneyText(String text) {
+        if (text.isEmpty()) {
+            return false;
+        }
+        if (text.contains("VND") || text.contains("₫")) {
+            return text.contains("+") || text.contains("-");
+        }
+        return false;
+    }
+
+    private boolean isBankNotification(String pkg) {
+        return pkg.equals("com.techcombank.notiapp")
+                || pkg.equals("com.vietqr.product")
+                || pkg.contains("mb") || pkg.contains("vietcom") || pkg.contains("vib")
+                || pkg.contains("tpb") || pkg.contains("vpbank") || pkg.contains("momo");
+    }
+
+    private String extractAmount(String text) {
+        Pattern pattern = Pattern.compile("(\\+?\\d{1,3}(?:\\.\\d{3})*(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})*(?:\\.\\d{1,2})?)(\\s?VND|\\s?₫|\\s?đ)?");
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) return matcher.group().trim();
+        return null;
+
+    }
+    private String extractAmount2(String text, String title) {
+        String combined = text + " " + title;
+        Pattern pattern = Pattern.compile("([+-]?\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{1,2})?)\\s?(VND|₫|đ)?", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(combined);
+
+        while (matcher.find()) {
+            String rawAmount = matcher.group(1);
+
+            // Xóa dấu + hoặc - nếu có
+            String cleanAmount = rawAmount.replaceAll("[^\\d]", "");
+
+            try {
+                long amount = Long.parseLong(cleanAmount);
+                return String.format("%,d", amount); // Format lại dạng 2,000,000
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
             }
         }
 
-        return false; // Không có từ khóa ngân hàng
-    }
-    private String removeVietnameseTone(String str) {
-        return Normalizer.normalize(str, Normalizer.Form.NFD)
-                .replaceAll("[^\\p{ASCII}]", "");
-    }
-    // Tìm số tiền trong nội dung thông báo
-    private String extractAmount(String text) {
-        // Regex tìm số tiền theo định dạng VND, ₫, hoặc đ
-        Pattern pattern = Pattern.compile(
-                "(\\+?\\d{1,3}(?:\\.\\d{3})*(?:,\\d{1,2})?|\\d{1,3}(?:,\\d{3})*(?:\\.\\d{1,2})?)(\\s?VND|\\s?₫|\\s?đ)?"
-        );
-        Matcher matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            return matcher.group().trim(); // Trả về kết quả đã tìm được
-        }
-        return null; // Không tìm thấy số tiền trong thông báo
+        return null;
     }
 
-    private void speak(String message) {
+
+    private long getDaysUntilExpire() {
+        String expireDateStr = prefs.getString("expire_date", "01-01-2000");
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            LocalDate expireDate = LocalDate.parse(expireDateStr, formatter);
+            return ChronoUnit.DAYS.between(LocalDate.now(), expireDate);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private void sendNotification(String title, String message) {
+        // Tùy bạn cài NotificationCompat.Builder ở đây nếu muốn thông báo cho người dùng.
+    }
+
+    private void saveTransaction(String title, String text) {
+//        String amount = extractAmount(text);
+        dbHelper.insertTransaction(title , text, System.currentTimeMillis());
+
+        Intent intent = new Intent("com.example.banknotireader.NEW_TRANSACTION");
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private String parseTransaction(String pkg, String title, String text) {
+        String result = "";
+        if(pkg.equals("com.example.fakebanknotifierá")){
+            result = TransactionParser.VPBank(title);
+        }
+        else if (pkg.equals("vn.com.techcombank.bb.app")) {
+            result = TransactionParser.TCB(title);
+        } else if (pkg.equals("vn.com.msb.smartBanking")) {
+            result = TransactionParser.MSB(text);
+        } else if (pkg.equals("com.tpb.mb.gprsandroid")) {
+            result = TransactionParser.TPB(text);
+            if (result.isEmpty()) result = TransactionParser.TPB2(text);
+        } else if (pkg.equals("com.vib.myvib2")) {
+            result = TransactionParser.VIB(text);
+        } else if (pkg.equals("com.mservice.momotransfer")) {
+            result = TransactionParser.Momo(text);
+        } else if (pkg.equals("com.techcombank.notiapp")) {
+            result = TransactionParser.ShareNoti(text);
+        } else if (pkg.equals("com.bplus.vtpay")) {
+            result = TransactionParser.ViettelPay(text);
+            if (result.isEmpty()) result = TransactionParser.VietPay(text);
+        } else if (pkg.equals("vn.com.lpb.lienviet24h")) {
+            result = TransactionParser.LPBank(text);
+        } else if (pkg.equals("com.vnpay.vpbankonline")) {
+            result = TransactionParser.VPBank(title);
+        } else if (pkg.equals("com.vnpay.coopbank")) {
+            result = TransactionParser.CoopBank(text);
+        } else if (pkg.equals("com.vietqr.product")) {
+            result = TransactionParser.VietQR(text);
+        } else if (pkg.equals("vn.abbank.retail")) {
+            result = TransactionParser.ABBank(title);
+        } else if (pkg.equals("vn.com.ocb.awe")) {
+            result = TransactionParser.OCB(text);
+        } else if (pkg.equals("com.vnpay.hdbank")) {
+            result = TransactionParser.HDBank(text);
+        } else {
+            String amountRaw = extractAmount2(title, text);
+            String amountSanitized = amountRaw.replace(",", "").replace(".", "");
+            long amount = Long.parseLong(amountSanitized);
+            result = "Giao dịch thành công: " + NumberToWordsConverter.convert(amount) + " đồng";
+        }
+        Log.i("NHT",  result);
+        return result;
+    }
+
+    private String today() {
+        return LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+    }
+
+    private void speak(String msg) {
         if (tts != null) {
-            // Phát âm thông báo
-            tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, null);
+            tts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, null);
         }
     }
 
@@ -108,4 +209,5 @@ public class BankNotificationListener extends NotificationListenerService {
         }
         super.onDestroy();
     }
+
 }

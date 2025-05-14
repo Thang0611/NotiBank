@@ -22,7 +22,7 @@ public class DBHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY, amount TEXT, message TEXT, timestamp LONG)");
+        db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY, title TEXT, message TEXT, timestamp LONG)");
     }
 
     @Override
@@ -31,9 +31,9 @@ public class DBHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public void insertTransaction(String amount, String message, long timestamp) {
+    public void insertTransaction(String title, String message, long timestamp) {
         ContentValues values = new ContentValues();
-        values.put("amount", amount);
+        values.put("title", title);
         values.put("message", message);
         values.put("timestamp", timestamp);
         getWritableDatabase().insert("transactions", null, values);
@@ -44,7 +44,7 @@ public class DBHelper extends SQLiteOpenHelper {
         Cursor c = getReadableDatabase().rawQuery("SELECT * FROM transactions ORDER BY timestamp DESC", null);
         while (c.moveToNext()) {
             Transaction t = new Transaction();
-            t.amount = c.getString(1);
+            t.title = c.getString(1);
             t.message = c.getString(2);
             t.timestamp = c.getLong(3);
             list.add(t);

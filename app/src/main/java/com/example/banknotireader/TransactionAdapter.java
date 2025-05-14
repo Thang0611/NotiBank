@@ -34,7 +34,7 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Transaction t = transactions.get(position);
-        holder.txtAmount.setText(t.amount);
+        holder.txtAmount.setText(t.title);
         holder.txtContent.setText(t.message);
         holder.txtTime.setText(getRelativeTime(t.timestamp));
     }
