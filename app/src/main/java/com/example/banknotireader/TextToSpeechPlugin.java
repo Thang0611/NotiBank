@@ -45,7 +45,7 @@ public class TextToSpeechPlugin  {
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC,
                 audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
 
-        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+        textToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null, null);
     }
 
     /**

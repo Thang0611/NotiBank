@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.speech.tts.TextToSpeech;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.Toast;
@@ -18,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.banknotireader.models.Transaction;
 
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,12 +27,17 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private TransactionAdapter adapter;
     private DBHelper dbHelper;
+    private TextToSpeech tts;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        tts = new TextToSpeech(getApplicationContext(), status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(new Locale("vi","VN"));
+            }
+        });
         switchListener = findViewById(R.id.switchListener);
         recyclerView = findViewById(R.id.recyclerView);
 
@@ -63,7 +70,14 @@ public class MainActivity extends AppCompatActivity {
         switchListener.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
             SharedPreferences.Editor editor = prefs.edit();
             editor.putBoolean("listener_enabled", isChecked);
-
+            String msg="";
+            if(isChecked){
+                msg="Đã bật thông báo chuyển khoản";
+            }
+            else {
+                msg="Đã tắt thông báo chuyển khoản";
+            }
+            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
             editor.apply();
         });
 

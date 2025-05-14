@@ -49,14 +49,14 @@ public class BankNotificationListener extends NotificationListenerService {
             String title = String.valueOf(extras.getCharSequence(NotificationCompat.EXTRA_TITLE));
             String text = String.valueOf(extras.getCharSequence(NotificationCompat.EXTRA_TEXT));
             String packageName = sbn.getPackageName();
-            Log.i("NHT", "onNotificationPosted: "+packageName);
             if (packageName.equals("com.zing.zalo") || packageName.equals("com.facebook.orca")) return;
 
             boolean isMoney = isMoneyText(text) || isMoneyText(title);
-            Log.i("NHT", "onNotificationPosted: "+(title));
-            Log.i("NHT", "onNotificationPosted: "+(text));
-            Log.i("NHT", "onNotificationPosted: "+isMoneyText(text) + isMoneyText(title));
+            Log.i("NHT", "onNotificationPosted: "+isMoneyText(text+title) + isMoneyText(title));
             boolean isBankPackage = isBankNotification(packageName);
+            Log.i("NHT", "onNotificationPosted: "+text );
+            Log.i("NHT", title);
+
 
             if (isMoney||isBankPackage ) {
 
@@ -64,7 +64,7 @@ public class BankNotificationListener extends NotificationListenerService {
                 Handler handler = new Handler();
                 handler.postDelayed(() -> {
                     String content = parseTransaction(packageName, title, text);
-                    Log.i("NHT", "onNotificationPosted: "+content);
+                    Log.d("NHT", "content"+content);
                     if (!content.isEmpty()) {
                         speak(content);
                         saveTransaction(title, text);
@@ -150,8 +150,8 @@ public class BankNotificationListener extends NotificationListenerService {
 
     private String parseTransaction(String pkg, String title, String text) {
         String result = "";
-        if(pkg.equals("com.example.fakebanknotifierá")){
-            result = TransactionParser.VPBank(title);
+        if(pkg.equals("com.VCB")){
+            result = TransactionParser.VietcomBank(text);
         }
         else if (pkg.equals("vn.com.techcombank.bb.app")) {
             result = TransactionParser.TCB(title);
@@ -199,7 +199,7 @@ public class BankNotificationListener extends NotificationListenerService {
 
     private void speak(String msg) {
         if (tts != null) {
-            tts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, null);
+            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
         }
     }
 
