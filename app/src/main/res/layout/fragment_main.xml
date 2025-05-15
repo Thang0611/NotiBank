@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#F5F5F5">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lắng nghe thông báo"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#333" />
+
+    <Switch
+        android:id="@+id/switchListener"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bật/Tắt tính năng"
+        android:layout_marginTop="8dp"
+        android:textSize="16sp"
+        android:textColor="#444" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lịch sử nhận tiền"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#333"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#FFFFFF"
+        android:padding="4dp"
+        android:clipToPadding="false"
+        android:scrollbars="vertical" />
+</LinearLayout>
