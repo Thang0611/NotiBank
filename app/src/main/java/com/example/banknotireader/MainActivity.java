@@ -1,5 +1,4 @@
 package com.example.banknotireader;
-package com.example.banknotireader;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;

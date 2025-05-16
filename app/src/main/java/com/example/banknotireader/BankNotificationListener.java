@@ -2,9 +2,12 @@ package com.example.banknotireader;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
@@ -27,6 +30,7 @@ public class BankNotificationListener extends NotificationListenerService {
     private DBHelper dbHelper;
     private SharedPreferences prefs;
 
+    SoundHelper soundHelper;
     @Override
     public void onCreate() {
         super.onCreate();
@@ -38,6 +42,7 @@ public class BankNotificationListener extends NotificationListenerService {
                 tts.setLanguage(new Locale("vi","VN"));
             }
         });
+        soundHelper = new SoundHelper(this);
     }
 
     @Override
@@ -199,7 +204,9 @@ public class BankNotificationListener extends NotificationListenerService {
 
     private void speak(String msg) {
         if (tts != null) {
-            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
+            soundHelper.playTingTing(() -> {
+                tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
+            }, 500); // 500ms delay đủ để âm thanh phát xong
         }
     }
 
@@ -208,6 +215,7 @@ public class BankNotificationListener extends NotificationListenerService {
         if (tts != null) {
             tts.stop();
             tts.shutdown();
+            soundHelper.release();
         }
         super.onDestroy();
     }
