@@ -1,10 +1,12 @@
 package com.example.banknotireader;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.SoundPool;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -30,19 +32,35 @@ public class BankNotificationListener extends NotificationListenerService {
     private DBHelper dbHelper;
     private SharedPreferences prefs;
 
-    SoundHelper soundHelper;
+
+    private SoundHelper soundHelper;
     @Override
     public void onCreate() {
         super.onCreate();
 
         dbHelper = new DBHelper(this);
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
+//        tts = new TextToSpeech(getApplicationContext(), status -> {
+//            if (status == TextToSpeech.SUCCESS) {
+//                tts.setLanguage(new Locale("vi","VN"));
+//            }
+//        });
         tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(new Locale("vi","VN"));
+                tts.setLanguage(new Locale("vi", "VN"));
+
+                // Đặt streamType theo SharedPreferences
+                SharedPreferences prefs = getApplicationContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+                int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
+                tts.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .setLegacyStreamType(streamType)
+                        .build());
             }
         });
-        soundHelper = new SoundHelper(this);
+
+        soundHelper = new SoundHelper(getApplicationContext());
     }
 
     @Override
@@ -71,7 +89,7 @@ public class BankNotificationListener extends NotificationListenerService {
                     String content = parseTransaction(packageName, title, text);
                     Log.d("NHT", "content"+content);
                     if (!content.isEmpty()) {
-                        speak(content);
+                        speak(this,content);
                         saveTransaction(title, text);
                         Log.i("NHT", "onNotificationPosted: "+content);
                     }
@@ -202,13 +220,48 @@ public class BankNotificationListener extends NotificationListenerService {
         return LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     }
 
-    private void speak(String msg) {
+    private void speak(Context context, String msg) {
         if (tts != null) {
-            soundHelper.playTingTing(() -> {
-                tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
-            }, 500); // 500ms delay đủ để âm thanh phát xong
+            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+            int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
+
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            int currentVolume = audioManager != null ? audioManager.getStreamVolume(streamType) : 0;
+
+            AudioAttributes attributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setLegacyStreamType(streamType)
+                    .build();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                soundHelper.playTingTing(context, new Runnable() {
+                    @Override
+                    public void run() {
+                        if (tts != null) {
+                            tts.setAudioAttributes(attributes);
+                            if (audioManager != null) {
+                                audioManager.setStreamVolume(streamType, currentVolume, 0);
+                            }
+                            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, "ttsUtteranceId");
+                        }
+                    }
+                }, 500);
+            } else {
+                Bundle params = new Bundle();
+                params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, streamType);
+                soundHelper.playTingTing(context, new Runnable() {
+                    @Override
+                    public void run() {
+                        if (tts != null) {
+                            tts.speak(msg, TextToSpeech.QUEUE_ADD, params, "ttsUtteranceId");
+                        }
+                    }
+                }, 500);
+            }
         }
     }
+
 
     @Override
     public void onDestroy() {

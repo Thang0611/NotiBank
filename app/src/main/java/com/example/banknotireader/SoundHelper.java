@@ -1,53 +1,72 @@
 package com.example.banknotireader;
 
 import android.content.Context;
-import android.media.SoundPool;
+import android.content.SharedPreferences;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 public class SoundHelper {
 
-    private SoundPool soundPool;
-    private int soundId;
-    private boolean isLoaded = false;
+    private MediaPlayer mediaPlayer;
+    private final Context context;
 
     public SoundHelper(Context context) {
-        soundPool = new SoundPool.Builder()
-                .setMaxStreams(1)
-                .build();
-        soundId = soundPool.load(context, R.raw.tingting, 1);
-        soundPool.setOnLoadCompleteListener((sp, id, status) -> {
-            if (status == 0 && id == soundId) {
-                isLoaded = true;
-            }
-        });
+        // Dùng application context để đảm bảo không bị leak context của Service
+        this.context = context.getApplicationContext();
     }
 
-    /**
-     * Phát âm thanh "ting-ting" và gọi callback khi phát xong (khoảng delayMillis ms)
-     * @param callback Runnable được gọi sau khi âm thanh phát xong
-     * @param delayMillis thời gian delay sau khi play âm thanh, thường 500ms đủ để âm thanh phát xong
-     */
-    public void playTingTing(Runnable callback, int delayMillis) {
-        if (!isLoaded) {
-            // Nếu chưa load kịp thì chờ load xong rồi play, đơn giản có thể delay thêm chút
-            new Handler(Looper.getMainLooper()).postDelayed(() -> playTingTing(callback, delayMillis), 100);
-            return;
-        }
+    public void playTingTing(Context context, Runnable callback, int delayMillis) {
+        release();
 
-        soundPool.play(soundId, 1f, 1f, 1, 0, 1f);
+        SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+        int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        int currentVolume = audioManager.getStreamVolume(streamType);
+        int maxVolume = audioManager.getStreamMaxVolume(streamType);
+        float volumeRatio = (float) currentVolume / maxVolume;
+
+        mediaPlayer = MediaPlayer.create(context, R.raw.tingting);
+        if (mediaPlayer == null) return;
+
+        AudioAttributes attributes = new AudioAttributes.Builder()
+                .setUsage(getUsageFromStreamType(streamType))
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        mediaPlayer.setAudioAttributes(attributes);
+
+        mediaPlayer.setVolume(volumeRatio, volumeRatio);
+
+        mediaPlayer.setOnCompletionListener(mp -> {
+            release();
             if (callback != null) {
-                callback.run();
+                new Handler(Looper.getMainLooper()).postDelayed(callback, delayMillis);
             }
-        }, delayMillis);
+        });
+
+        mediaPlayer.start();
+    }
+
+    private int getUsageFromStreamType(int streamType) {
+        switch (streamType) {
+            case AudioManager.STREAM_NOTIFICATION:
+                return AudioAttributes.USAGE_NOTIFICATION;
+            case AudioManager.STREAM_RING:
+                return AudioAttributes.USAGE_NOTIFICATION_RINGTONE;
+            case AudioManager.STREAM_MUSIC:
+            default:
+                return AudioAttributes.USAGE_MEDIA;
+        }
     }
 
     public void release() {
-        if (soundPool != null) {
-            soundPool.release();
-            soundPool = null;
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
         }
     }
 }

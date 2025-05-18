@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.nav_home) {
                 selectedFragment = new MainFragment();
             } else if (item.getItemId() == R.id.nav_chart) {
-                selectedFragment = new ChartFragment();
+                selectedFragment = new SettingsFragment();
             }
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, selectedFragment)
