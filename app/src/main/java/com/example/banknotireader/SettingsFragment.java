@@ -47,7 +47,7 @@ public class SettingsFragment extends Fragment {
 
         // Ánh xạ RadioGroup
         radioGroupOutput = view.findViewById(R.id.radio_output);
-
+        radioGroupOutput.check(R.id.radio_ringtone);
         // Ánh xạ các mục cài đặt giọng nói và truy cập thông báo
         layoutVoiceSettings = view.findViewById(R.id.layout_voice_settings);
         layoutNotificationAccess = view.findViewById(R.id.layout_notification_access);
@@ -118,7 +118,6 @@ public class SettingsFragment extends Fragment {
             SharedPreferences prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
             prefs.edit().putInt("audio_output_stream", streamType).apply();
         });
-
         return view;
     }
     // Hàm tiện ích chuyển stream type sang tên dễ đọc

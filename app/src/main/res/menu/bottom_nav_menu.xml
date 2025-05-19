@@ -1,10 +1,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_home"
-        android:icon="@android:drawable/ic_menu_info_details"
+        android:icon="@drawable/ic_transaction"
         android:title="Giao dịch" />
     <item
         android:id="@+id/nav_chart"
-        android:icon="@android:drawable/ic_menu_agenda"
+        android:icon="@android:drawable/ic_menu_preferences"
         android:title="Cài đặt" />
 </menu>

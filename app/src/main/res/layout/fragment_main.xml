@@ -7,22 +7,44 @@
     android:background="#F5F5F5">
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Lắng nghe thông báo"
-        android:textSize="20sp"
+        android:text="Thông Báo Chuyển Khoản"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:textColor="#333" />
+        android:textColor="#00695C"
+        android:gravity="center"
+        android:paddingBottom="12dp" />
 
-    <Switch
-        android:id="@+id/switchListener"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp"
         android:layout_marginTop="8dp"
-        android:minHeight="48dp"
-        android:text="Bật/Tắt tính năng"
-        android:textColor="#444"
-        android:textSize="16sp" />
+        android:background="@drawable/switch_background">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Thông Báo Giọng Nói"
+            android:textSize="16sp"
+            android:textColor="#333"
+            android:paddingEnd="8dp" />
+
+        <Switch
+            android:id="@+id/switchListener"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:thumb="@drawable/custom_thumb"
+            android:track="@drawable/custom_track"
+            android:textOn="Bật"
+            android:textOff="Tắt"
+            android:padding="4dp" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"

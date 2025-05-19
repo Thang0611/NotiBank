@@ -10,14 +10,22 @@
         android:orientation="vertical">
 
         <!-- Nhóm: Cài đặt thông báo -->
+<!--        <TextView-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Cài đặt thông báo"-->
+<!--            android:textSize="16sp"-->
+<!--            android:textStyle="bold"-->
+<!--            android:paddingBottom="8dp" />-->
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Cài đặt thông báo"
-            android:textSize="16sp"
+            android:text="Cài đặt"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:paddingBottom="8dp" />
-
+            android:textColor="#00695C"
+            android:gravity="center"
+            android:paddingBottom="12dp" />
         <!-- Cài đặt giọng nói -->
         <LinearLayout
             android:id="@+id/layout_voice_settings"
