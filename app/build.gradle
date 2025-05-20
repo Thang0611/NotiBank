@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.banknotireader'
+    namespace 'com.NT.banknotireader'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.example.banknotireader"
+        applicationId "com.NT.banknotireader"
         minSdk 28
         targetSdk 35
         versionCode 1
@@ -18,7 +18,13 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug{
+            debuggable false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
