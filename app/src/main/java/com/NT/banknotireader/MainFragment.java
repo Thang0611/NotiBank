@@ -40,8 +40,8 @@ public class MainFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         SharedPreferences prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
-        boolean isEnabled = prefs.getBoolean("listener_enabled", false);
-        switchListener.setChecked(isEnabled);
+        prefs.edit().putBoolean("listener_enabled", false);
+        switchListener.setChecked(false);
 
         // First run
         SharedPreferences firstRunPrefs = requireContext().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);

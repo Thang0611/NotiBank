@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -22,7 +24,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import java.util.concurrent.atomic.AtomicReference;
 public class BankNotificationListener extends NotificationListenerService {
     private static AudioManager audioManager;
     private TextToSpeech tts;
@@ -216,48 +218,139 @@ public class BankNotificationListener extends NotificationListenerService {
     private String today() {
         return LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     }
-
     private void speak(Context context, String msg) {
-        if (tts != null) {
-            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
-            int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
+        if (tts == null) return;
 
-            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            int currentVolume = audioManager != null ? audioManager.getStreamVolume(streamType) : 0;
+        SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+        int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
+        boolean enableDucking = prefs.getBoolean("enable_ducking", false);
 
-            AudioAttributes attributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .setLegacyStreamType(streamType)
+        AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+
+        int focusGain = enableDucking
+                ? AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                : AudioManager.AUDIOFOCUS_GAIN_TRANSIENT;
+
+        AudioAttributes attributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .setLegacyStreamType(streamType)
+                .build();
+
+        AudioManager.OnAudioFocusChangeListener afChangeListener = focusChange -> {
+            // Xử lý thay đổi focus nếu cần
+        };
+
+        final AtomicReference<AudioFocusRequest> focusRequestRef = new AtomicReference<>(null);
+        int result;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(focusGain)
+                    .setAudioAttributes(attributes)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setOnAudioFocusChangeListener(afChangeListener)
                     .build();
+            focusRequestRef.set(focusRequest);
+            result = audioManager.requestAudioFocus(focusRequest);
+        } else {
+            result = audioManager.requestAudioFocus(afChangeListener, streamType, focusGain);
+        }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                soundHelper.playTingTing(context, new Runnable() {
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            Runnable speakRunnable = () -> {
+                if (tts != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        tts.setAudioAttributes(attributes);
+                        tts.speak(msg, TextToSpeech.QUEUE_ADD, null, "ttsUtteranceId");
+                    } else {
+                        Bundle params = new Bundle();
+                        params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, streamType);
+                        tts.speak(msg, TextToSpeech.QUEUE_ADD, params, "ttsUtteranceId");
+                    }
+                }
+            };
+
+            soundHelper.playTingTing(context, () -> {
+                speakRunnable.run();
+
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override
-                    public void run() {
-                        if (tts != null) {
-                            tts.setAudioAttributes(attributes);
-                            if (audioManager != null) {
-                                audioManager.setStreamVolume(streamType, currentVolume, 0);
+                    public void onStart(String utteranceId) { }
+
+                    @Override
+                    public void onDone(String utteranceId) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            AudioFocusRequest focusRequest = focusRequestRef.get();
+                            if (focusRequest != null) {
+                                audioManager.abandonAudioFocusRequest(focusRequest);
                             }
-                            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, "ttsUtteranceId");
+                        } else {
+                            audioManager.abandonAudioFocus(afChangeListener);
                         }
                     }
-                }, 500);
-            } else {
-                Bundle params = new Bundle();
-                params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, streamType);
-                soundHelper.playTingTing(context, new Runnable() {
+
                     @Override
-                    public void run() {
-                        if (tts != null) {
-                            tts.speak(msg, TextToSpeech.QUEUE_ADD, params, "ttsUtteranceId");
+                    public void onError(String utteranceId) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            AudioFocusRequest focusRequest = focusRequestRef.get();
+                            if (focusRequest != null) {
+                                audioManager.abandonAudioFocusRequest(focusRequest);
+                            }
+                        } else {
+                            audioManager.abandonAudioFocus(afChangeListener);
                         }
                     }
-                }, 500);
-            }
+                });
+            }, 500);
+        } else {
+            // Không được cấp focus, xử lý fallback nếu cần
         }
     }
+
+
+
+
+//    private void speak(Context context, String msg) {
+//        if (tts != null) {
+//            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+//            int streamType = prefs.getInt("audio_output_stream", AudioManager.STREAM_RING);
+//
+//            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+//            int currentVolume = audioManager != null ? audioManager.getStreamVolume(streamType) : 0;
+//
+//            AudioAttributes attributes = new AudioAttributes.Builder()
+//                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+//                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+//                    .setLegacyStreamType(streamType)
+//                    .build();
+//
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                soundHelper.playTingTing(context, new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (tts != null) {
+//                            tts.setAudioAttributes(attributes);
+//                            if (audioManager != null) {
+//                                audioManager.setStreamVolume(streamType, currentVolume, 0);
+//                            }
+//                            tts.speak(msg, TextToSpeech.QUEUE_ADD, null, "ttsUtteranceId");
+//                        }
+//                    }
+//                }, 500);
+//            } else {
+//                Bundle params = new Bundle();
+//                params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, streamType);
+//                soundHelper.playTingTing(context, new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (tts != null) {
+//                            tts.speak(msg, TextToSpeech.QUEUE_ADD, params, "ttsUtteranceId");
+//                        }
+//                    }
+//                }, 500);
+//            }
+//        }
+//    }
 
 
     @Override

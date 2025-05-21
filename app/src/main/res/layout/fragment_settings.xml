@@ -81,21 +81,21 @@
         </LinearLayout>
 
         <!-- Switch: Nhắc lại thông báo -->
-        <Switch
-            android:id="@+id/switch_remind_notification"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Nhắc lại thông báo"
-            android:padding="12dp"
-            android:enabled="false" />
+<!--        <Switch-->
+<!--            android:id="@+id/switch_remind_notification"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Nhắc lại thông báo"-->
+<!--            android:padding="12dp"-->
+<!--            android:enabled="false" />-->
 
-        <!-- Switch: Cho phép thông báo trong chế độ im lặng -->
-        <Switch
-            android:id="@+id/switch_notify_in_dnd"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Cho phép thông báo trong chế độ Im lặng/Không làm phiền"
-            android:padding="12dp" />
+<!--        &lt;!&ndash; Switch: Cho phép thông báo trong chế độ im lặng &ndash;&gt;-->
+<!--        <Switch-->
+<!--            android:id="@+id/switch_notify_in_dnd"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Cho phép thông báo trong chế độ Im lặng/Không làm phiền"-->
+<!--            android:padding="12dp" />-->
 
         <!-- Switch: Giảm âm lượng ứng dụng khác khi phát thông báo -->
         <Switch
@@ -110,8 +110,9 @@
             android:id="@+id/switch_boost_volume"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Tăng âm lượng tối đa khi phát thông báo"
-            android:padding="12dp" />
+            android:minHeight="48dp"
+            android:padding="12dp"
+            android:text="Tăng âm lượng tối đa khi phát thông báo" />
 
         <!-- Nhóm: Âm thanh đầu ra -->
         <TextView

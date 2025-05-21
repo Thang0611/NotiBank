@@ -33,12 +33,12 @@ public class SettingsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings, container, false);
-
+        SharedPreferences prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
         // Khởi tạo AudioManager
         audioManager = (AudioManager) requireContext().getSystemService(Context.AUDIO_SERVICE);
 
         // Ánh xạ Switch
-        switchNotifyInDnd = view.findViewById(R.id.switch_notify_in_dnd);
+//        switchNotifyInDnd = view.findViewById(R.id.switch_notify_in_dnd);
         switchDuckOtherApps = view.findViewById(R.id.switch_duck_other_apps);
         switchBoostVolume = view.findViewById(R.id.switch_boost_volume);
 
@@ -52,7 +52,7 @@ public class SettingsFragment extends Fragment {
         // Xử lý: Cài đặt giọng nói
         layoutVoiceSettings.setOnClickListener(v -> {
             Intent intent = new Intent();
-            intent.setAction("Settings.ACTION_TTS_SETTINGS");
+            intent.setAction("com.android.settings.TTS_SETTINGS");
             startActivity(intent);
         });
 
@@ -63,18 +63,18 @@ public class SettingsFragment extends Fragment {
         });
 
         // 1. Cho phép phát thông báo khi đang ở chế độ im lặng (DND)
-        switchNotifyInDnd.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-                if (!notificationManager.isNotificationPolicyAccessGranted()) {
-                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
-                    startActivity(intent);
-                    Toast.makeText(getContext(), "Cần cấp quyền Không làm phiền", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getContext(), "Đã bật phát thông báo trong chế độ im lặng", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+//        switchNotifyInDnd.setOnCheckedChangeListener((buttonView, isChecked) -> {
+//            if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+//                if (!notificationManager.isNotificationPolicyAccessGranted()) {
+//                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+//                    startActivity(intent);
+//                    Toast.makeText(getContext(), "Cần cấp quyền Không làm phiền", Toast.LENGTH_SHORT).show();
+//                } else {
+//                    Toast.makeText(getContext(), "Đã bật phát thông báo trong chế độ im lặng", Toast.LENGTH_SHORT).show();
+//                }
+//            }
+//        });
 
 
         // 2. Giảm âm lượng ứng dụng khác khi phát thông báo
@@ -98,23 +98,33 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(getContext(), "Đã tăng âm lượng tối đa", Toast.LENGTH_SHORT).show();
             }
         });
+        int streamType=prefs.getInt("audio_output_stream",AudioManager.STREAM_RING);
+        if(streamType==AudioManager.STREAM_NOTIFICATION){
+            radioGroupOutput.check(R.id.radio_notification);
+        }
+        else if(streamType==AudioManager.STREAM_MUSIC){
+            radioGroupOutput.check(R.id.radio_media);
 
+        }else if(streamType==AudioManager.STREAM_RING){
+            radioGroupOutput.check(R.id.radio_ringtone);
+
+        }
 // 4. Xử lý chọn đầu ra âm thanh
         radioGroupOutput.setOnCheckedChangeListener((group, checkedId) -> {
-            int streamType = AudioManager.STREAM_RING; // mặc định nhạc chuông
+
+            int _streamType =prefs.getInt("audio_output_stream",AudioManager.STREAM_RING);
 
             if (checkedId == R.id.radio_notification) {
-                streamType = AudioManager.STREAM_NOTIFICATION;
+                _streamType = AudioManager.STREAM_NOTIFICATION;
             } else if (checkedId == R.id.radio_media) {
-                streamType = AudioManager.STREAM_MUSIC;
+                _streamType = AudioManager.STREAM_MUSIC;
             } else if (checkedId == R.id.radio_ringtone) {
-                streamType = AudioManager.STREAM_RING;
+                _streamType = AudioManager.STREAM_RING;
             }
 
-            Toast.makeText(getContext(), "Đã chọn đầu ra: " + streamTypeToString(streamType), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Đã chọn đầu ra: " + streamTypeToString(_streamType), Toast.LENGTH_SHORT).show();
 
-            SharedPreferences prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
-            prefs.edit().putInt("audio_output_stream", streamType).apply();
+            prefs.edit().putInt("audio_output_stream", _streamType).apply();
         });
         return view;
     }
